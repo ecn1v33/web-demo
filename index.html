@@ -1,107 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>HTML5 Platformer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dashboard</title>
     <style>
-        body { margin: 0; background: #5c94fc; overflow: hidden; font-family: 'Arial', sans-serif; }
-        #gameCanvas { display: block; margin: 0 auto; background: #5c94fc; }
-        .ui { position: absolute; top: 10px; left: 20px; color: white; font-size: 24px; text-shadow: 2px 2px #000; }
-    </style>
-</head>
-<body>
-    <div class="ui">Coins: <span id="score">0</span></div>
-    <canvas id="gameCanvas"></canvas>
-
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreEl = document.getElementById('score');
-
-        canvas.width = window.innerWidth;
-        canvas.height = 400;
-
-        // Game Constants
-        const gravity = 0.8;
-        const friction = 0.8;
-        let score = 0;
-
-        // Level Map (0 = Empty, 1 = Brick, 2 = Coin, 3 = Goal)
-        const level = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
-            [0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,1,1,1,0,0,0,1,1,0,0,0,0,0,0,3],
-            [0,0,0,0,0,2,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,3],
-            [1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        ];
-
-        const tileSize = 60;
-        let cameraX = 0;
-
-        const player = {
-            x: 100, y: 200,
-            width: 40, height: 50,
-            velX: 0, velY: 0,
-            speed: 5, jumpStrength: -15,
-            grounded: false,
-            color: '#e74c3c'
-        };
-
-        const keys = {};
-
-        // Controls
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
-        function drawPlayer() {
-            // Body
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x - cameraX, player.y, player.width, player.height);
-            // Hat
-            ctx.fillStyle = '#c0392b';
-            ctx.fillRect(player.x - cameraX, player.y, player.width, 10);
-            // Eyes
-            ctx.fillStyle = 'black';
-            ctx.fillRect(player.x - cameraX + 25, player.y + 15, 5, 5);
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --text: #1a1a1a;
+            --accent: #6c5ce7;
         }
 
-        function update() {
-            // Horizontal Movement
-            if (keys['ArrowRight'] || keys['KeyD']) {
-                if (player.velX < player.speed) player.velX++;
-            }
-            if (keys['ArrowLeft'] || keys['KeyA']) {
-                if (player.velX > -player.speed) player.velX--;
-            }
-            player.velX *= friction;
+        [data-theme="dark"] {
+            --bg: #1a1a1a;
+            --card-bg: rgba(45, 45, 45, 0.8);
+            --text: #f0f2f5;
+            --accent: #a29bfe;
+        }
 
-            // Vertical Movement (Jump)
-            if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.grounded) {
-                player.velY = player.jumpStrength;
-                player.grounded = false;
-            }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            transition: all 0.3s ease;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
 
-            player.velY += gravity;
-            player.x += player.velX;
-            player.y += player.velY;
-            player.grounded = false;
+        .container {
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
 
-            // Camera Follow
-            if (player.x > canvas.width / 2) {
-                cameraX = player.x - canvas.width / 2;
-            }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
 
-            // Collision Detection
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            for (let r = 0; r < level.length; r++) {
-                for (let c = 0; c < level[r].length; c++) {
-                    let tile = level[r][c];
-                    let tx = c * tileSize;
-                    let ty = r * tileSize + 50;
+        button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            background: var(--accent);
+            color: white;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
 
-                    if (tile === 1) { // Brick
-                        ctx.fillStyle = '#9b59b6';
-                        ctx.fillRect(tx - cameraX, ty, tileSize, tileSize);
-                        ctx.strokeStyle = '#8e44ad';
-                        ctx.
+        button:active { transform: scale(0.95); }
+
+        .todo-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            outline: none;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            text-align: left;
+        }
+
+        li {
+            background: rgba(0,0,0,0.05);
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .time-display { font-size: 0.9em; opacity: 0.7; }
+    </style>
+</head>
+<body data-theme="light">
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h2 id="greeting">Hello!</h2>
+                <div class="time-display" id="clock">00:00:00</div>
+            </div>
+            <button onclick="toggleTheme()">🌓 Theme</button>
+        </div>
+
+        <div class="todo-input">
+            <input type="text" id="taskInput" placeholder="Add a new goal...">
+            <button onclick="addTask()">Add</button>
+        </div>
+
+        <ul id="taskList"></ul>
+    </div>
+
+    <script>
+        // 1. Dynamic Greeting & Clock
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours();
+            const timeStr = now.toLocale
