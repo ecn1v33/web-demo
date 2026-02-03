@@ -1,130 +1,145 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Single File Tic-Tac-Toe</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Chess - Single File</title>
     <style>
+        :root {
+            --bg-color: #2f3542;
+            --square-light: #f0d9b5;
+            --square-dark: #b58863;
+            --highlight: #7bed9f;
+            --text-color: #ffffff;
+        }
+
         body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #1a1a1a;
-            color: white;
-            font-family: 'Arial', sans-serif;
+            margin: 0;
         }
-        .status {
+
+        .info-panel {
+            text-align: center;
             margin-bottom: 20px;
-            font-size: 24px;
         }
-        .board {
+
+        #chessboard {
             display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-template-rows: repeat(3, 100px);
-            gap: 5px;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 4px solid #1e272e;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .cell {
-            width: 100px;
-            height: 100px;
-            background-color: #333;
-            border: none;
-            color: white;
-            font-size: 40px;
-            cursor: pointer;
+
+        .square {
+            width: 60px;
+            height: 60px;
             display: flex;
-            align-items: center;
             justify-content: center;
-        }
-        .cell:hover { background-color: #444; }
-        .cell.taken { cursor: not-allowed; }
-        button#reset {
-            margin-top: 20px;
-            padding: 10px 20px;
+            align-items: center;
+            font-size: 45px;
             cursor: pointer;
-            background: #007bff;
-            color: white;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .white-sq { background-color: var(--square-light); }
+        .black-sq { background-color: var(--square-dark); }
+
+        .selected {
+            background-color: var(--highlight) !important;
+        }
+
+        button {
+            margin-top: 30px;
+            padding: 10px 25px;
+            font-size: 16px;
+            background: #ffa502;
             border: none;
             border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #2f3542;
+        }
+
+        button:hover { background: #eccc68; }
+
+        .piece {
+            display: inline-block;
+            pointer-events: none; /* Prevents text selection during clicks */
         }
     </style>
 </head>
 <body>
 
-    <div class="status" id="status">Player X's Turn</div>
-    <div class="board" id="board">
-        </div>
-    <button id="reset" onclick="resetGame()">Restart Game</button>
+    <div class="info-panel">
+        <h1>Single-File Chess</h1>
+        <p id="status">White to move. Click a piece to select it.</p>
+    </div>
+
+    <div id="chessboard"></div>
+
+    <button onclick="resetGame()">New Game</button>
 
     <script>
-        const boardElement = document.getElementById('board');
-        const statusElement = document.getElementById('status');
-        let currentPlayer = 'X';
-        let gameState = ["", "", "", "", "", "", "", "", ""];
-        let gameActive = true;
+        const boardDiv = document.getElementById('chessboard');
+        const statusText = document.getElementById('status');
+        
+        // Unicode pieces
+        const pieceIcons = {
+            'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+            'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+        };
 
-        const winningConditions = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
-            [0, 4, 8], [2, 4, 6]             // Diagonals
+        let boardState = [
+            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', ''],
+            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
         ];
 
-        function createBoard() {
-            boardElement.innerHTML = "";
-            gameState.forEach((cell, index) => {
-                const cellElement = document.createElement('div');
-                cellElement.classList.add('cell');
-                cellElement.innerText = cell;
-                cellElement.addEventListener('click', () => handleCellClick(index));
-                boardElement.appendChild(cellElement);
-            });
-        }
+        let selectedSquare = null;
+        let isWhiteTurn = true;
 
-        function handleCellClick(index) {
-            if (gameState[index] !== "" || !gameActive) return;
+        function drawBoard() {
+            boardDiv.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(r + c) % 2 === 0 ? 'white-sq' : 'black-sq'}`;
+                    square.dataset.row = r;
+                    square.dataset.col = c;
 
-            gameState[index] = currentPlayer;
-            checkResult();
-            if (gameActive) {
-                currentPlayer = currentPlayer === "X" ? "O" : "X";
-                statusElement.innerText = `Player ${currentPlayer}'s Turn`;
-            }
-            createBoard();
-        }
+                    const piece = boardState[r][c];
+                    if (piece) {
+                        const span = document.createElement('span');
+                        span.className = 'piece';
+                        span.innerHTML = pieceIcons[piece];
+                        // Distinguish colors for the move logic
+                        span.dataset.color = (piece === piece.toUpperCase()) ? 'white' : 'black';
+                        square.appendChild(span);
+                    }
 
-        function checkResult() {
-            let roundWon = false;
-            for (let condition of winningConditions) {
-                let a = gameState[condition[0]];
-                let b = gameState[condition[1]];
-                let c = gameState[condition[2]];
-                if (a === '' || b === '' || c === '') continue;
-                if (a === b && b === c) {
-                    roundWon = true;
-                    break;
+                    if (selectedSquare && selectedSquare.r == r && selectedSquare.c == c) {
+                        square.classList.add('selected');
+                    }
+
+                    square.onclick = () => onSquareClick(r, c);
+                    boardDiv.appendChild(square);
                 }
             }
-
-            if (roundWon) {
-                statusElement.innerText = `Player ${currentPlayer} Wins!`;
-                gameActive = false;
-                return;
-            }
-
-            if (!gameState.includes("")) {
-                statusElement.innerText = "It's a Draw!";
-                gameActive = false;
-            }
         }
 
-        function resetGame() {
-            currentPlayer = 'X';
-            gameState = ["", "", "", "", "", "", "", "", ""];
-            gameActive = true;
-            statusElement.innerText = "Player X's Turn";
-            createBoard();
-        }
-
-        createBoard();
-    </script>
-</body>
-</html>
+        function onSquareClick(r, c) {
+            const clickedPiece = boardState
