@@ -1,87 +1,130 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Dash Racer</title>
+    <title>Single File Tic-Tac-Toe</title>
     <style>
-        body { margin: 0; background: #333; overflow: hidden; font-family: sans-serif; }
-        #game-track { 
-            width: 300px; height: 100vh; background: #555; 
-            margin: 0 auto; position: relative; border-left: 5px dashed white; border-right: 5px dashed white;
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Arial', sans-serif;
         }
-        #car { 
-            width: 40px; height: 70px; background: #ff4757; 
-            position: absolute; bottom: 20px; left: 130px; border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        .status {
+            margin-bottom: 20px;
+            font-size: 24px;
         }
-        .enemy { 
-            width: 40px; height: 70px; background: #2f3542; 
-            position: absolute; top: -100px; border-radius: 5px;
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
         }
-        #score { position: absolute; top: 20px; left: 20px; color: white; font-size: 24px; }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #333;
+            border: none;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cell:hover { background-color: #444; }
+        .cell.taken { cursor: not-allowed; }
+        button#reset {
+            margin-top: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="score">Score: 0</div>
-    <div id="game-track">
-        <div id="car"></div>
-    </div>
+    <div class="status" id="status">Player X's Turn</div>
+    <div class="board" id="board">
+        </div>
+    <button id="reset" onclick="resetGame()">Restart Game</button>
 
     <script>
-        const car = document.getElementById('car');
-        const track = document.getElementById('game-track');
-        const scoreElement = document.getElementById('score');
-        
-        let carPos = 130;
-        let score = 0;
-        let speed = 5;
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        let currentPlayer = 'X';
+        let gameState = ["", "", "", "", "", "", "", "", ""];
         let gameActive = true;
 
-        // 1. Movement Control
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' && carPos > 10) carPos -= 20;
-            if (e.key === 'ArrowRight' && carPos < 250) carPos += 20;
-            car.style.left = carPos + 'px';
-        });
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
+            [0, 4, 8], [2, 4, 6]             // Diagonals
+        ];
 
-        // 2. Create Obstacles
-        function createEnemy() {
-            if (!gameActive) return;
-            let enemy = document.createElement('div');
-            enemy.classList.add('enemy');
-            enemy.style.left = Math.floor(Math.random() * 250) + 'px';
-            track.appendChild(enemy);
-
-            let enemyPos = -100;
-            let interval = setInterval(() => {
-                if (!gameActive) { clearInterval(interval); return; }
-                
-                enemyPos += speed;
-                enemy.style.top = enemyPos + 'px';
-
-                // 3. Collision Detection
-                let carRect = car.getBoundingClientRect();
-                let enemyRect = enemy.getBoundingClientRect();
-
-                if (carRect.left < enemyRect.right && carRect.right > enemyRect.left &&
-                    carRect.top < enemyRect.bottom && carRect.bottom > enemyRect.top) {
-                    gameActive = false;
-                    alert("Game Over! Score: " + score);
-                    location.reload();
-                }
-
-                // 4. Scoring
-                if (enemyPos > window.innerHeight) {
-                    score++;
-                    scoreElement.innerText = "Score: " + score;
-                    enemy.remove();
-                    clearInterval(interval);
-                    if (score % 5 === 0) speed += 1; // Speed up!
-                }
-            }, 20);
+        function createBoard() {
+            boardElement.innerHTML = "";
+            gameState.forEach((cell, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.classList.add('cell');
+                cellElement.innerText = cell;
+                cellElement.addEventListener('click', () => handleCellClick(index));
+                boardElement.appendChild(cellElement);
+            });
         }
 
-        setInterval(createEnemy, 1500);
+        function handleCellClick(index) {
+            if (gameState[index] !== "" || !gameActive) return;
+
+            gameState[index] = currentPlayer;
+            checkResult();
+            if (gameActive) {
+                currentPlayer = currentPlayer === "X" ? "O" : "X";
+                statusElement.innerText = `Player ${currentPlayer}'s Turn`;
+            }
+            createBoard();
+        }
+
+        function checkResult() {
+            let roundWon = false;
+            for (let condition of winningConditions) {
+                let a = gameState[condition[0]];
+                let b = gameState[condition[1]];
+                let c = gameState[condition[2]];
+                if (a === '' || b === '' || c === '') continue;
+                if (a === b && b === c) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusElement.innerText = `Player ${currentPlayer} Wins!`;
+                gameActive = false;
+                return;
+            }
+
+            if (!gameState.includes("")) {
+                statusElement.innerText = "It's a Draw!";
+                gameActive = false;
+            }
+        }
+
+        function resetGame() {
+            currentPlayer = 'X';
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            gameActive = true;
+            statusElement.innerText = "Player X's Turn";
+            createBoard();
+        }
+
+        createBoard();
     </script>
 </body>
 </html>
