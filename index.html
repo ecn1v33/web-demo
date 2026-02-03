@@ -1,85 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Click Game</title>
+    <title>Simple Dash Racer</title>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f0f0f0; overflow: hidden; }
-        #game-area { 
-            width: 100vw; height: 80vh; border: 2px solid #333; 
-            background: white; position: relative; cursor: crosshair; 
+        body { margin: 0; background: #333; overflow: hidden; font-family: sans-serif; }
+        #game-track { 
+            width: 300px; height: 100vh; background: #555; 
+            margin: 0 auto; position: relative; border-left: 5px dashed white; border-right: 5px dashed white;
         }
-        #target { 
-            width: 50px; height: 50px; background: red; 
-            position: absolute; border-radius: 8px; cursor: pointer;
-            transition: 0.1s;
+        #car { 
+            width: 40px; height: 70px; background: #ff4757; 
+            position: absolute; bottom: 20px; left: 130px; border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
-        .info { font-size: 24px; margin: 10px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; }
+        .enemy { 
+            width: 40px; height: 70px; background: #2f3542; 
+            position: absolute; top: -100px; border-radius: 5px;
+        }
+        #score { position: absolute; top: 20px; left: 20px; color: white; font-size: 24px; }
     </style>
 </head>
 <body>
 
-    <div class="info">Score: <span id="score">0</span> | Time: <span id="time">30</span>s</div>
-    <button id="start-btn" onclick="startGame()">Start Game</button>
-    
-    <div id="game-area">
-        <div id="target" style="display: none;" onclick="catchTarget()"></div>
+    <div id="score">Score: 0</div>
+    <div id="game-track">
+        <div id="car"></div>
     </div>
 
     <script>
+        const car = document.getElementById('car');
+        const track = document.getElementById('game-track');
+        const scoreElement = document.getElementById('score');
+        
+        let carPos = 130;
         let score = 0;
-        let timeLeft = 30;
-        let gameActive = false;
-        const target = document.getElementById('target');
-        const scoreDisplay = document.getElementById('score');
-        const timeDisplay = document.getElementById('time');
+        let speed = 5;
+        let gameActive = true;
 
-        function startGame() {
-            score = 0;
-            timeLeft = 30;
-            gameActive = true;
-            scoreDisplay.innerText = score;
-            timeDisplay.innerText = timeLeft;
-            document.getElementById('start-btn').style.display = 'none';
-            target.style.display = 'block';
-            
-            moveTarget();
-            
-            let timer = setInterval(() => {
-                timeLeft--;
-                timeDisplay.innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(timer);
-                    endGame();
-                }
-            }, 1000);
-        }
+        // 1. Movement Control
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && carPos > 10) carPos -= 20;
+            if (e.key === 'ArrowRight' && carPos < 250) carPos += 20;
+            car.style.left = carPos + 'px';
+        });
 
-        function moveTarget() {
+        // 2. Create Obstacles
+        function createEnemy() {
             if (!gameActive) return;
-            // Calculate random position inside the game area
-            const x = Math.random() * (window.innerWidth - 60);
-            const y = Math.random() * (window.innerHeight * 0.8 - 60);
-            target.style.left = x + 'px';
-            target.style.top = y + 'px';
-            // Change color randomly for fun
-            target.style.background = `hsl(${Math.random() * 360}, 70%, 50%)`;
+            let enemy = document.createElement('div');
+            enemy.classList.add('enemy');
+            enemy.style.left = Math.floor(Math.random() * 250) + 'px';
+            track.appendChild(enemy);
+
+            let enemyPos = -100;
+            let interval = setInterval(() => {
+                if (!gameActive) { clearInterval(interval); return; }
+                
+                enemyPos += speed;
+                enemy.style.top = enemyPos + 'px';
+
+                // 3. Collision Detection
+                let carRect = car.getBoundingClientRect();
+                let enemyRect = enemy.getBoundingClientRect();
+
+                if (carRect.left < enemyRect.right && carRect.right > enemyRect.left &&
+                    carRect.top < enemyRect.bottom && carRect.bottom > enemyRect.top) {
+                    gameActive = false;
+                    alert("Game Over! Score: " + score);
+                    location.reload();
+                }
+
+                // 4. Scoring
+                if (enemyPos > window.innerHeight) {
+                    score++;
+                    scoreElement.innerText = "Score: " + score;
+                    enemy.remove();
+                    clearInterval(interval);
+                    if (score % 5 === 0) speed += 1; // Speed up!
+                }
+            }, 20);
         }
 
-        function catchTarget() {
-            if (gameActive) {
-                score++;
-                scoreDisplay.innerText = score;
-                moveTarget(); // Jump to a new spot immediately
-            }
-        }
-
-        function endGame() {
-            gameActive = false;
-            target.style.display = 'none';
-            document.getElementById('start-btn').style.display = 'inline-block';
-            alert("Game Over! Your score: " + score);
-        }
+        setInterval(createEnemy, 1500);
     </script>
 </body>
 </html>
