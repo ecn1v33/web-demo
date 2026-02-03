@@ -1,145 +1,206 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML Chess - Single File</title>
+    <title>Simple Action Fighter</title>
     <style>
-        :root {
-            --bg-color: #2f3542;
-            --square-light: #f0d9b5;
-            --square-dark: #b58863;
-            --highlight: #7bed9f;
-            --text-color: #ffffff;
-        }
-
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #222;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
+            color: white;
+            font-family: sans-serif;
             margin: 0;
+            overflow: hidden;
         }
-
-        .info-panel {
-            text-align: center;
-            margin-bottom: 20px;
+        canvas {
+            border: 4px solid #444;
+            background: #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
-
-        #chessboard {
-            display: grid;
-            grid-template-columns: repeat(8, 60px);
-            grid-template-rows: repeat(8, 60px);
-            border: 4px solid #1e272e;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .square {
-            width: 60px;
-            height: 60px;
+        .ui {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 45px;
-            cursor: pointer;
-            user-select: none;
-            transition: background 0.2s;
+            justify-content: space-between;
+            width: 800px;
+            margin-top: 20px;
+            position: relative;
         }
-
-        .white-sq { background-color: var(--square-light); }
-        .black-sq { background-color: var(--square-dark); }
-
-        .selected {
-            background-color: var(--highlight) !important;
+        .health-bar {
+            width: 350px;
+            height: 30px;
+            background: #555;
+            border: 2px solid #fff;
         }
-
-        button {
-            margin-top: 30px;
-            padding: 10px 25px;
-            font-size: 16px;
-            background: #ffa502;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #2f3542;
+        #health-p1, #health-p2 {
+            height: 100%;
+            background: #ff4757;
+            width: 100%;
+            transition: width 0.2s;
         }
-
-        button:hover { background: #eccc68; }
-
-        .piece {
-            display: inline-block;
-            pointer-events: none; /* Prevents text selection during clicks */
-        }
+        .controls { font-size: 12px; color: #aaa; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="info-panel">
-        <h1>Single-File Chess</h1>
-        <p id="status">White to move. Click a piece to select it.</p>
+    <div class="ui">
+        <div class="health-bar"><div id="health-p1"></div></div>
+        <div id="status">FIGHT!</div>
+        <div class="health-bar"><div id="health-p2"></div></div>
     </div>
 
-    <div id="chessboard"></div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
 
-    <button onclick="resetGame()">New Game</button>
+    <div class="controls">
+        P1: [A][D] Move, [W] Jump, [Space] Attack | P2: [Arrows] Move, [Enter] Attack
+    </div>
 
     <script>
-        const boardDiv = document.getElementById('chessboard');
-        const statusText = document.getElementById('status');
-        
-        // Unicode pieces
-        const pieceIcons = {
-            'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
-            'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
-        };
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        let boardState = [
-            ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-            ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-            ['', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', ''],
-            ['', '', '', '', '', '', '', ''],
-            ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-            ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
-        ];
+        const gravity = 0.7;
 
-        let selectedSquare = null;
-        let isWhiteTurn = true;
+        class Sprite {
+            constructor({ position, velocity, color, offset }) {
+                this.position = position;
+                this.velocity = velocity;
+                this.width = 50;
+                this.height = 100;
+                this.color = color;
+                this.health = 100;
+                this.isAttacking = false;
+                this.attackBox = {
+                    position: { x: this.position.x, y: this.position.y },
+                    offset,
+                    width: 100,
+                    height: 50
+                };
+            }
 
-        function drawBoard() {
-            boardDiv.innerHTML = '';
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const square = document.createElement('div');
-                    square.className = `square ${(r + c) % 2 === 0 ? 'white-sq' : 'black-sq'}`;
-                    square.dataset.row = r;
-                    square.dataset.col = c;
+            draw() {
+                // Character
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
 
-                    const piece = boardState[r][c];
-                    if (piece) {
-                        const span = document.createElement('span');
-                        span.className = 'piece';
-                        span.innerHTML = pieceIcons[piece];
-                        // Distinguish colors for the move logic
-                        span.dataset.color = (piece === piece.toUpperCase()) ? 'white' : 'black';
-                        square.appendChild(span);
-                    }
-
-                    if (selectedSquare && selectedSquare.r == r && selectedSquare.c == c) {
-                        square.classList.add('selected');
-                    }
-
-                    square.onclick = () => onSquareClick(r, c);
-                    boardDiv.appendChild(square);
+                // Attack Box (only visible when attacking)
+                if (this.isAttacking) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fillRect(
+                        this.attackBox.position.x, 
+                        this.attackBox.position.y, 
+                        this.attackBox.width, 
+                        this.attackBox.height
+                    );
                 }
+            }
+
+            update() {
+                this.draw();
+                this.attackBox.position.x = this.position.x + this.attackBox.offset.x;
+                this.attackBox.position.y = this.position.y;
+
+                this.position.x += this.velocity.x;
+                this.position.y += this.velocity.y;
+
+                // Gravity logic
+                if (this.position.y + this.height + this.velocity.y >= canvas.height) {
+                    this.velocity.y = 0;
+                } else {
+                    this.velocity.y += gravity;
+                }
+            }
+
+            attack() {
+                this.isAttacking = true;
+                setTimeout(() => this.isAttacking = false, 100);
             }
         }
 
-        function onSquareClick(r, c) {
-            const clickedPiece = boardState
+        const player1 = new Sprite({
+            position: { x: 100, y: 0 },
+            velocity: { x: 0, y: 0 },
+            color: '#1e90ff',
+            offset: { x: 0, y: 0 }
+        });
+
+        const player2 = new Sprite({
+            position: { x: 650, y: 0 },
+            velocity: { x: 0, y: 0 },
+            color: '#ffa502',
+            offset: { x: -50, y: 0 }
+        });
+
+        const keys = {
+            a: { pressed: false }, d: { pressed: false }, w: { pressed: false },
+            ArrowRight: { pressed: false }, ArrowLeft: { pressed: false }
+        };
+
+        function rectangularCollision({ rect1, rect2 }) {
+            return (
+                rect1.attackBox.position.x + rect1.attackBox.width >= rect2.position.x &&
+                rect1.attackBox.position.x <= rect2.position.x + rect2.width &&
+                rect1.attackBox.position.y + rect1.attackBox.height >= rect2.position.y &&
+                rect1.attackBox.position.y <= rect2.position.y + rect2.height
+            );
+        }
+
+        function animate() {
+            window.requestAnimationFrame(animate);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            player1.update();
+            player2.update();
+
+            // P1 Movement
+            player1.velocity.x = 0;
+            if (keys.a.pressed) player1.velocity.x = -5;
+            else if (keys.d.pressed) player1.velocity.x = 5;
+
+            // P2 Movement
+            player2.velocity.x = 0;
+            if (keys.ArrowLeft.pressed) player2.velocity.x = -5;
+            else if (keys.ArrowRight.pressed) player2.velocity.x = 5;
+
+            // Collision Detection (Hit)
+            if (player1.isAttacking && rectangularCollision({ rect1: player1, rect2: player2 })) {
+                player1.isAttacking = false;
+                player2.health -= 10;
+                document.getElementById('health-p2').style.width = player2.health + '%';
+            }
+
+            if (player2.isAttacking && rectangularCollision({ rect1: player2, rect2: player1 })) {
+                player2.isAttacking = false;
+                player1.health -= 10;
+                document.getElementById('health-p1').style.width = player1.health + '%';
+            }
+
+            // End Game Logic
+            if (player1.health <= 0 || player2.health <= 0) {
+                document.getElementById('status').innerText = player1.health <= 0 ? "PLAYER 2 WINS" : "PLAYER 1 WINS";
+            }
+        }
+
+        animate();
+
+        window.addEventListener('keydown', (event) => {
+            switch (event.key) {
+                // P1
+                case 'd': keys.d.pressed = true; break;
+                case 'a': keys.a.pressed = true; break;
+                case 'w': if (player1.position.y > 250) player1.velocity.y = -15; break;
+                case ' ': player1.attack(); break;
+                // P2
+                case 'ArrowRight': keys.ArrowRight.pressed = true; break;
+                case 'ArrowLeft': keys.ArrowLeft.pressed = true; break;
+                case 'ArrowUp': if (player2.position.y > 250) player2.velocity.y = -15; break;
+                case 'Enter': player2.attack(); break;
+            }
+        });
+
+        window.addEventListener('keyup', (event) => {
+            switch (event.key) {
+                case 'd': keys.d.pressed = false; break;
+                case 'a': keys.a.pressed = false; break;
+                case 'ArrowRight': keys.ArrowRight.pressed = false; break;
+                case '
