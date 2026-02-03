@@ -1,81 +1,85 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Landing Page</title>
+    <title>Simple Click Game</title>
     <style>
-        /* Base Styles */
-        :root { --bg: #ffffff; --text: #333; --accent: #007bff; }
-        .dark-theme { --bg: #1a1a1a; --text: #f4f4f4; --accent: #00d4ff; }
-
-        body { 
-            margin: 0; font-family: sans-serif; 
-            background-color: var(--bg); color: var(--text); 
-            transition: all 0.5s ease; 
+        body { font-family: sans-serif; text-align: center; background: #f0f0f0; overflow: hidden; }
+        #game-area { 
+            width: 100vw; height: 80vh; border: 2px solid #333; 
+            background: white; position: relative; cursor: crosshair; 
         }
-
-        /* Layout */
-        .container { 
-            height: 100vh; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; text-align: center; 
+        #target { 
+            width: 50px; height: 50px; background: red; 
+            position: absolute; border-radius: 8px; cursor: pointer;
+            transition: 0.1s;
         }
-
-        h1 { font-size: 3rem; margin-bottom: 10px; }
-        p { font-size: 1.2rem; margin-bottom: 30px; opacity: 0.8; }
-
-        /* Interactive Buttons */
-        .btn-group { display: flex; gap: 15px; }
-        
-        button {
-            padding: 15px 30px; border: none; border-radius: 50px;
-            cursor: pointer; font-weight: bold; font-size: 1rem;
-            transition: 0.3s;
-        }
-
-        .primary-btn { background: var(--accent); color: white; }
-        .secondary-btn { background: #e0e0e0; color: #333; }
-        
-        button:hover { transform: scale(1.1); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        button:active { transform: scale(0.95); }
-
-        /* Simple Alert Box style */
-        #status-msg { margin-top: 20px; font-weight: bold; color: var(--accent); }
+        .info { font-size: 24px; margin: 10px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1 id="headline">Welcome Friend!</h1>
-        <p id="subtext">Click the buttons below to interact with the page.</p>
-
-        <div class="btn-group">
-            <button class="primary-btn" onclick="sayHello()">Say Hello</button>
-            
-            <button class="secondary-btn" onclick="toggleTheme()">Switch Mode</button>
-        </div>
-
-        <p id="status-msg"></p>
+    <div class="info">Score: <span id="score">0</span> | Time: <span id="time">30</span>s</div>
+    <button id="start-btn" onclick="startGame()">Start Game</button>
+    
+    <div id="game-area">
+        <div id="target" style="display: none;" onclick="catchTarget()"></div>
     </div>
 
     <script>
-        // Interaction 1: Personal Greeting
-        function sayHello() {
-            let name = prompt("What is your name?");
-            if (name) {
-                document.getElementById("headline").innerText = "Hello, " + name + "!";
-                document.getElementById("status-msg").innerText = "Nice to meet you!";
+        let score = 0;
+        let timeLeft = 30;
+        let gameActive = false;
+        const target = document.getElementById('target');
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            gameActive = true;
+            scoreDisplay.innerText = score;
+            timeDisplay.innerText = timeLeft;
+            document.getElementById('start-btn').style.display = 'none';
+            target.style.display = 'block';
+            
+            moveTarget();
+            
+            let timer = setInterval(() => {
+                timeLeft--;
+                timeDisplay.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function moveTarget() {
+            if (!gameActive) return;
+            // Calculate random position inside the game area
+            const x = Math.random() * (window.innerWidth - 60);
+            const y = Math.random() * (window.innerHeight * 0.8 - 60);
+            target.style.left = x + 'px';
+            target.style.top = y + 'px';
+            // Change color randomly for fun
+            target.style.background = `hsl(${Math.random() * 360}, 70%, 50%)`;
+        }
+
+        function catchTarget() {
+            if (gameActive) {
+                score++;
+                scoreDisplay.innerText = score;
+                moveTarget(); // Jump to a new spot immediately
             }
         }
 
-        // Interaction 2: Theme Toggle
-        function toggleTheme() {
-            document.body.classList.toggle("dark-theme");
-            let isDark = document.body.classList.contains("dark-theme");
-            document.getElementById("status-msg").innerText = 
-                isDark ? "Dark Mode Activated 🌙" : "Light Mode Activated ☀️";
+        function endGame() {
+            gameActive = false;
+            target.style.display = 'none';
+            document.getElementById('start-btn').style.display = 'inline-block';
+            alert("Game Over! Your score: " + score);
         }
     </script>
-
 </body>
 </html>
